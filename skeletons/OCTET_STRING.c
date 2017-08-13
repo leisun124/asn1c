@@ -1362,7 +1362,6 @@ OCTET_STRING_decode_uper(asn_codec_ctx_t *opt_codec_ctx,
 
 	switch(specs->subvariant) {
 	default:
-	case ASN_OSUBV_ANY:
 		ASN_DEBUG("Unrecognized subvariant %d", specs->subvariant);
 		RETURN(RC_FAIL);
 	case ASN_OSUBV_BIT:
@@ -1370,6 +1369,7 @@ OCTET_STRING_decode_uper(asn_codec_ctx_t *opt_codec_ctx,
 		bpc = OS__BPC_BIT;
 		break;
 	case ASN_OSUBV_STR:
+	case ASN_OSUBV_ANY:
 		canonical_unit_bits = unit_bits = 8;
 		if(cval->flags & APC_CONSTRAINED)
 			unit_bits = cval->range_bits;
@@ -1538,7 +1538,6 @@ OCTET_STRING_encode_uper(asn_TYPE_descriptor_t *td,
 
 	switch(specs->subvariant) {
 	default:
-	case ASN_OSUBV_ANY:
 		ASN__ENCODE_FAILED;
 	case ASN_OSUBV_BIT:
 		canonical_unit_bits = unit_bits = 1;
@@ -1547,6 +1546,7 @@ OCTET_STRING_encode_uper(asn_TYPE_descriptor_t *td,
 		ASN_DEBUG("BIT STRING of %d bytes, %d bits unused",
 				sizeinunits, st->bits_unused);
 		break;
+	case ASN_OSUBV_ANY:
 	case ASN_OSUBV_STR:
 		canonical_unit_bits = unit_bits = 8;
 		if(cval->flags & APC_CONSTRAINED)
@@ -1801,7 +1801,8 @@ OCTET_STRING_decode_oer(asn_codec_ctx_t *opt_codec_ctx,
 		    csiz->lower_bound, csiz->upper_bound, csiz->effective_bits);
     }
 	if(csiz->effective_bits >= 0) {
-		FREEMEM(st->buf);
+        if (st->buf)
+    		FREEMEM(st->buf);
 		if(bpc) {
 			st->size = csiz->upper_bound * bpc;
 		} else {

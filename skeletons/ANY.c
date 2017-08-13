@@ -128,6 +128,25 @@ ANY_new_fromType(asn_TYPE_descriptor_t *td, void *sptr) {
 }
 
 int
+ANY_fromType_uper(ANY_t *st, asn_TYPE_descriptor_t *td, void *sptr) {
+
+	if(!st || !td) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if(!sptr) {
+		if(st->buf) FREEMEM(st->buf);
+		st->size = 0;
+		return 0;
+	}
+
+    if ((st->size = uper_encode_to_new_buffer(td, NULL, sptr, (void **)&st->buf)) < 0) {
+        return -1;
+    }
+	return 0;
+}
+int
 ANY_to_type(ANY_t *st, asn_TYPE_descriptor_t *td, void **struct_ptr) {
 	asn_dec_rval_t rval;
 	void *newst = 0;
@@ -171,6 +190,32 @@ ANY_to_type_oer(ANY_t *st, asn_TYPE_descriptor_t *td, void **struct_ptr) {
 	}
 
 	rval = oer_decode(0, td, (void **)&newst, st->buf, st->size);
+	if(rval.code == RC_OK) {
+		*struct_ptr = newst;
+		return 0;
+	} else {
+		/* Remove possibly partially decoded data. */
+		ASN_STRUCT_FREE(*td, newst);
+		return -1;
+	}
+}
+int
+ANY_to_type_uper(ANY_t *st, asn_TYPE_descriptor_t *td, void **struct_ptr) {
+	asn_dec_rval_t rval;
+	void *newst = 0;
+
+	if(!st || !td || !struct_ptr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if(st->buf == 0) {
+		/* Nothing to convert, make it empty. */
+		*struct_ptr = (void *)0;
+		return 0;
+	}
+
+	rval = uper_decode_complete(0, td, (void **)&newst, st->buf, st->size);
 	if(rval.code == RC_OK) {
 		*struct_ptr = newst;
 		return 0;
